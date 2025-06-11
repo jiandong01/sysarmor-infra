@@ -1,0 +1,93 @@
+services:
+  # NATS集群节点1
+  nats-1:
+    image: nats:2.10.7-alpine
+    container_name: nats-1
+    ports:
+      - "4222:4222"  # 客户端连接端口
+      - "8222:8222"  # HTTP监控端口
+      - "6222:6222"  # 集群通信端口
+    volumes:
+      - ./configs/nats-1.conf:/etc/nats/nats-server.conf:ro
+      - nats-1-data:/data
+    command: ["-c", "/etc/nats/nats-server.conf"]
+    networks:
+      - nats-cluster
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # NATS集群节点2
+  nats-2:
+    image: nats:2.10.7-alpine
+    container_name: nats-2
+    ports:
+      - "4223:4222"  # 客户端连接端口
+      - "8223:8222"  # HTTP监控端口
+      - "6223:6222"  # 集群通信端口
+    volumes:
+      - ./configs/nats-2.conf:/etc/nats/nats-server.conf:ro
+      - nats-2-data:/data
+    command: ["-c", "/etc/nats/nats-server.conf"]
+    networks:
+      - nats-cluster
+    restart: unless-stopped
+    depends_on:
+      - nats-1
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # NATS集群节点3
+  nats-3:
+    image: nats:2.10.7-alpine
+    container_name: nats-3
+    ports:
+      - "4224:4222"  # 客户端连接端口
+      - "8224:8222"  # HTTP监控端口
+      - "6224:6222"  # 集群通信端口
+    volumes:
+      - ./configs/nats-3.conf:/etc/nats/nats-server.conf:ro
+      - nats-3-data:/data
+    command: ["-c", "/etc/nats/nats-server.conf"]
+    networks:
+      - nats-cluster
+    restart: unless-stopped
+    depends_on:
+      - nats-1
+      - nats-2
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # NATS监控面板 (可选)
+  nats-surveyor:
+    image: natsio/nats-surveyor:latest
+    container_name: nats-surveyor
+    ports:
+      - "7777:7777"
+    environment:
+      - NATS_SURVEYOR_SERVERS=nats://nats-1:4222,nats://nats-2:4222,nats://nats-3:4222
+    networks:
+      - nats-cluster
+    restart: unless-stopped
+    depends_on:
+      - nats-1
+      - nats-2
+      - nats-3
+
+volumes:
+  nats-1-data:
+  nats-2-data:
+  nats-3-data:
+
+networks:
+  nats-cluster:
+    driver: bridge

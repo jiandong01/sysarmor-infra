@@ -1,0 +1,58 @@
+# NATS Server specific ignores
+
+# Backup files
+backups/
+*.backup
+*.bak
+
+# Log files
+*.log
+logs/
+
+# Data directories (if running locally)
+data/
+jetstream/
+
+# Docker volumes backup
+volumes/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# SSL certificates (if any)
+*.crt
+*.key
+*.pem
+ssl/
+certs/
+
+# Monitoring data
+monitoring/
+data/
+
+# Test output
+test-results/
+coverage/
