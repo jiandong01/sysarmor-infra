@@ -1,11 +1,12 @@
 <?xml version="1.0"?>
 <clickhouse>
     <users>
-        <!-- 默认用户 -->
+        <!-- 默认用户（禁用网络访问） -->
         <default>
             <password></password>
             <networks>
-                <ip>::/0</ip>
+                <ip>127.0.0.1</ip>
+                <ip>::1</ip>
             </networks>
             <profile>default</profile>
             <quota>default</quota>
@@ -17,20 +18,27 @@
             <networks>
                 <ip>::/0</ip>
             </networks>
-            <profile>default</profile>
+            <profile>sysarmor_profile</profile>
             <quota>default</quota>
         </sysarmor>
     </users>
 
     <!-- 用户配置文件 -->
     <profiles>
-        <default>
+        <!-- SysArmor专用配置文件 -->
+        <sysarmor_profile>
             <max_memory_usage>10000000000</max_memory_usage>
+            <max_concurrent_queries_for_user>100</max_concurrent_queries_for_user>
             <use_uncompressed_cache>0</use_uncompressed_cache>
             <load_balancing>random</load_balancing>
             <readonly>0</readonly>
             <allow_ddl>1</allow_ddl>
-        </default>
+            <allow_introspection_functions>1</allow_introspection_functions>
+            <max_execution_time>300</max_execution_time>
+            <max_query_size>1000000</max_query_size>
+            <max_ast_depth>1000</max_ast_depth>
+            <max_ast_elements>1000000</max_ast_elements>
+        </sysarmor_profile>
     </profiles>
 
     <!-- 配额设置 -->

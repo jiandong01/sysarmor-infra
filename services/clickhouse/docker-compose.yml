@@ -12,14 +12,11 @@ services:
       - "9009:9009"  # HTTP接口（备用）
     environment:
       CLICKHOUSE_DB: sysarmor_events
-      CLICKHOUSE_USER: sysarmor
-      CLICKHOUSE_PASSWORD: sysarmor123
-      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - clickhouse_logs:/var/log/clickhouse-server
-      - ./config/clickhouse-config.xml:/etc/clickhouse-server/config.xml:ro
-      - ./config/users.xml:/etc/clickhouse-server/users.xml:ro
+      - ./config/config.d:/etc/clickhouse-server/config.d:ro
+      - ./config/users.d:/etc/clickhouse-server/users.d
       - ./init:/docker-entrypoint-initdb.d:ro
     ulimits:
       nofile:

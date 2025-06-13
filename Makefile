@@ -98,7 +98,7 @@ up:
 	for service in $$SERVICES_TO_START; do \
 		if [ -d "services/$$service" ]; then \
 			echo "启动 $$service 服务..."; \
-			cd services/$$service && docker-compose up -d && cd ../..; \
+			cd services/$$service && docker compose up -d && cd ../..; \
 		else \
 			echo "⚠️  服务目录 services/$$service 不存在"; \
 		fi; \
@@ -112,25 +112,25 @@ up:
 # 单独启动各个服务
 up-nats:
 	@echo "🚀 启动NATS集群..."
-	@cd services/nats && docker-compose up -d
+	@cd services/nats && docker compose up -d
 	@sleep 5
 	@make health-nats
 
 up-clickhouse:
 	@echo "🚀 启动ClickHouse..."
-	@cd services/clickhouse && docker-compose up -d
+	@cd services/clickhouse && docker compose up -d
 	@sleep 5
 	@make health-clickhouse
 
 up-postgres:
 	@echo "🚀 启动PostgreSQL..."
-	@cd services/postgres && docker-compose up -d
+	@cd services/postgres && docker compose up -d
 	@sleep 5
 	@make health-postgres
 
 up-redis:
 	@echo "🚀 启动Redis..."
-	@cd services/redis && docker-compose up -d
+	@cd services/redis && docker compose up -d
 	@sleep 3
 	@make health-redis
 
@@ -141,7 +141,7 @@ down:
 	for service in $$SERVICES_TO_STOP; do \
 		if [ -d "services/$$service" ]; then \
 			echo "停止 $$service 服务..."; \
-			cd services/$$service && docker-compose down && cd ../..; \
+			cd services/$$service && docker compose down && cd ../..; \
 		else \
 			echo "⚠️  服务目录 services/$$service 不存在"; \
 		fi; \
@@ -151,19 +151,19 @@ down:
 # 单独停止各个服务
 down-nats:
 	@echo "🛑 停止NATS集群..."
-	@cd services/nats && docker-compose down
+	@cd services/nats && docker compose down
 
 down-clickhouse:
 	@echo "🛑 停止ClickHouse..."
-	@cd services/clickhouse && docker-compose down
+	@cd services/clickhouse && docker compose down
 
 down-postgres:
 	@echo "🛑 停止PostgreSQL..."
-	@cd services/postgres && docker-compose down
+	@cd services/postgres && docker compose down
 
 down-redis:
 	@echo "🛑 停止Redis..."
-	@cd services/redis && docker-compose down
+	@cd services/redis && docker compose down
 
 # 重启所有服务
 restart: down up
@@ -176,7 +176,7 @@ status:
 		if [ -d "services/$$service" ]; then \
 			echo ""; \
 			echo "📋 $$service 服务状态:"; \
-			cd services/$$service && docker-compose ps && cd ../..; \
+			cd services/$$service && docker compose ps && cd ../..; \
 		fi; \
 	done
 	@echo ""
@@ -235,7 +235,7 @@ logs:
 		if [ -d "services/$$service" ]; then \
 			echo ""; \
 			echo "📋 $$service 服务日志:"; \
-			cd services/$$service && docker-compose logs --tail=50 && cd ../..; \
+			cd services/$$service && docker compose logs --tail=50 && cd ../..; \
 		fi; \
 	done
 
@@ -244,23 +244,23 @@ logs-follow:
 	@echo "==============================="
 	@for service in $(AVAILABLE_SERVICES); do \
 		if [ -d "services/$$service" ]; then \
-			cd services/$$service && docker-compose logs -f & cd ../..; \
+			cd services/$$service && docker compose logs -f & cd ../..; \
 		fi; \
 	done; \
 	wait
 
 # 查看特定服务日志
 logs-nats:
-	@cd services/nats && docker-compose logs --tail=100
+	@cd services/nats && docker compose logs --tail=100
 
 logs-clickhouse:
-	@cd services/clickhouse && docker-compose logs --tail=100
+	@cd services/clickhouse && docker compose logs --tail=100
 
 logs-postgres:
-	@cd services/postgres && docker-compose logs --tail=100
+	@cd services/postgres && docker compose logs --tail=100
 
 logs-redis:
-	@cd services/redis && docker-compose logs --tail=100
+	@cd services/redis && docker compose logs --tail=100
 
 # 进入容器shell
 shell-clickhouse:

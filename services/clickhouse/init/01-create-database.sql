@@ -24,8 +24,8 @@ SETTINGS
 -- 创建物化视图用于实时统计
 CREATE MATERIALIZED VIEW IF NOT EXISTS events_stats_mv
 ENGINE = SummingMergeTree()
-PARTITION BY toYYYYMMDD(timestamp)
-ORDER BY (agent_id, event_type, toStartOfHour(timestamp))
+PARTITION BY toYYYYMMDD(hour)
+ORDER BY (agent_id, event_type, hour)
 AS SELECT
     agent_id,
     event_type,
