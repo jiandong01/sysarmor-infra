@@ -1,0 +1,92 @@
+<?xml version="1.0"?>
+<clickhouse>
+    <!-- 监听配置 -->
+    <listen_host>0.0.0.0</listen_host>
+    <http_port>8123</http_port>
+    <tcp_port>9000</tcp_port>
+    <interserver_http_port>9009</interserver_http_port>
+
+    <!-- 日志配置 -->
+    <logger>
+        <level>information</level>
+        <log>/var/log/clickhouse-server/clickhouse-server.log</log>
+        <errorlog>/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>
+        <size>1000M</size>
+        <count>10</count>
+    </logger>
+
+    <!-- 数据存储路径 -->
+    <path>/var/lib/clickhouse/</path>
+    <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
+    <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
+    <format_schema_path>/var/lib/clickhouse/format_schemas/</format_schema_path>
+
+    <!-- 内存配置 -->
+    <max_memory_usage>10000000000</max_memory_usage>
+    <max_concurrent_queries>100</max_concurrent_queries>
+    <max_server_memory_usage>0</max_server_memory_usage>
+    <max_thread_pool_size>10000</max_thread_pool_size>
+
+    <!-- 存储策略配置（冷热分离） -->
+    <storage_configuration>
+        <disks>
+            <hot_disk>
+                <type>local</type>
+                <path>/var/lib/clickhouse/hot/</path>
+            </hot_disk>
+            <cold_disk>
+                <type>local</type>
+                <path>/var/lib/clickhouse/cold/</path>
+            </cold_disk>
+        </disks>
+        <policies>
+            <hot_cold_policy>
+                <volumes>
+                    <hot>
+                        <disk>hot_disk</disk>
+                        <max_data_part_size_bytes>1073741824</max_data_part_size_bytes>
+                    </hot>
+                    <cold>
+                        <disk>cold_disk</disk>
+                    </cold>
+                </volumes>
+                <move_factor>0.2</move_factor>
+            </hot_cold_policy>
+        </policies>
+    </storage_configuration>
+
+    <!-- 压缩配置 -->
+    <compression>
+        <case>
+            <method>lz4</method>
+        </case>
+    </compression>
+
+    <!-- 网络配置 -->
+    <max_connections>4096</max_connections>
+    <keep_alive_timeout>3</keep_alive_timeout>
+    <max_concurrent_queries_for_user>450</max_concurrent_queries_for_user>
+
+    <!-- 查询日志 -->
+    <query_log>
+        <database>system</database>
+        <table>query_log</table>
+        <partition_by>toYYYYMM(event_date)</partition_by>
+        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+    </query_log>
+
+    <!-- 部分日志 -->
+    <part_log>
+        <database>system</database>
+        <table>part_log</table>
+        <partition_by>toYYYYMM(event_date)</partition_by>
+        <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+    </part_log>
+
+    <!-- 时区 -->
+    <timezone>Asia/Shanghai</timezone>
+
+    <!-- 默认配置文件 -->
+    <include_from>/etc/clickhouse-server/config.d/*.xml</include_from>
+    <include_from>/etc/clickhouse-server/users.d/*.xml</include_from>
+</clickhouse>

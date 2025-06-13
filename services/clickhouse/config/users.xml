@@ -1,0 +1,108 @@
+<?xml version="1.0"?>
+<clickhouse>
+    <users>
+        <!-- 默认用户 -->
+        <default>
+            <password></password>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>default</profile>
+            <quota>default</quota>
+            <databases>
+                <database>default</database>
+            </databases>
+        </default>
+
+        <!-- SysArmor专用用户 -->
+        <sysarmor>
+            <password>sysarmor123</password>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>sysarmor_profile</profile>
+            <quota>sysarmor_quota</quota>
+            <databases>
+                <database>sysarmor_events</database>
+                <database>system</database>
+            </databases>
+            <access_management>1</access_management>
+        </sysarmor>
+
+        <!-- 只读用户 -->
+        <readonly>
+            <password>readonly123</password>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>readonly</profile>
+            <quota>default</quota>
+            <databases>
+                <database>sysarmor_events</database>
+            </databases>
+        </readonly>
+    </users>
+
+    <!-- 用户配置文件 -->
+    <profiles>
+        <default>
+            <max_memory_usage>10000000000</max_memory_usage>
+            <use_uncompressed_cache>0</use_uncompressed_cache>
+            <load_balancing>random</load_balancing>
+        </default>
+
+        <sysarmor_profile>
+            <max_memory_usage>20000000000</max_memory_usage>
+            <max_bytes_before_external_group_by>20000000000</max_bytes_before_external_group_by>
+            <max_bytes_before_external_sort>20000000000</max_bytes_before_external_sort>
+            <max_query_size>1000000</max_query_size>
+            <max_ast_depth>1000</max_ast_depth>
+            <max_ast_elements>1000000</max_ast_elements>
+            <max_expanded_ast_elements>1000000</max_expanded_ast_elements>
+            <max_execution_time>300</max_execution_time>
+            <min_execution_speed>1000000</min_execution_speed>
+            <timeout_before_checking_execution_speed>10</timeout_before_checking_execution_speed>
+            <max_columns_to_read>1000</max_columns_to_read>
+            <max_temporary_columns>1000</max_temporary_columns>
+            <max_temporary_non_const_columns>1000</max_temporary_non_const_columns>
+            <max_subquery_depth>100</max_subquery_depth>
+            <max_pipeline_depth>1000</max_pipeline_depth>
+            <max_ast_depth>1000</max_ast_depth>
+            <readonly>0</readonly>
+            <allow_ddl>1</allow_ddl>
+            <allow_introspection_functions>1</allow_introspection_functions>
+        </sysarmor_profile>
+
+        <readonly>
+            <readonly>1</readonly>
+            <allow_ddl>0</allow_ddl>
+            <max_memory_usage>5000000000</max_memory_usage>
+            <max_execution_time>60</max_execution_time>
+        </readonly>
+    </profiles>
+
+    <!-- 配额设置 -->
+    <quotas>
+        <default>
+            <interval>
+                <duration>3600</duration>
+                <queries>0</queries>
+                <errors>0</errors>
+                <result_rows>0</result_rows>
+                <read_rows>0</read_rows>
+                <execution_time>0</execution_time>
+            </interval>
+        </default>
+
+        <sysarmor_quota>
+            <interval>
+                <duration>3600</duration>
+                <queries>10000</queries>
+                <errors>1000</errors>
+                <result_rows>1000000000</result_rows>
+                <read_rows>1000000000</read_rows>
+                <execution_time>18000</execution_time>
+            </interval>
+        </sysarmor_quota>
+    </quotas>
+</clickhouse>
