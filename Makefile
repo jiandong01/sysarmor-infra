@@ -45,7 +45,9 @@ help:
 	@echo "  backup              - 备份所有数据"
 	@echo "  restore-postgres    - 恢复PostgreSQL数据"
 	@echo "  clean               - 清理未使用的资源"
+	@echo "  clean-all           - 强制清理所有SysArmor相关资源"
 	@echo "  reset               - 完全重置 (删除所有数据)"
+	@echo "  restart-clean       - 清理后重新启动所有服务"
 	@echo ""
 	@echo "🛠️  开发工具:"
 	@echo "  dev-init            - 初始化开发环境"
@@ -349,6 +351,26 @@ clean:
 	@docker volume prune -f
 	@echo "✅ 清理完成"
 
+# 强制清理所有相关资源
+clean-all:
+	@echo "🧹 强制清理所有SysArmor相关资源..."
+	@echo "停止所有服务..."
+	@make down 2>/dev/null || true
+	@echo "清理SysArmor容器..."
+	@docker ps -a --filter "name=sysarmor-" -q | xargs -r docker rm -f 2>/dev/null || true
+	@echo "清理数据卷..."
+	@docker volume ls -q --filter "name=sysarmor" | xargs -r docker volume rm -f 2>/dev/null || true
+	@docker volume ls -q --filter "name=clickhouse" | xargs -r docker volume rm -f 2>/dev/null || true
+	@docker volume ls -q --filter "name=postgres" | xargs -r docker volume rm -f 2>/dev/null || true
+	@docker volume ls -q --filter "name=nats" | xargs -r docker volume rm -f 2>/dev/null || true
+	@docker volume ls -q --filter "name=redis" | xargs -r docker volume rm -f 2>/dev/null || true
+	@echo "清理网络..."
+	@docker network ls --filter "name=sysarmor" -q | xargs -r docker network rm 2>/dev/null || true
+	@echo "清理未使用的资源..."
+	@docker system prune -f >/dev/null 2>&1 || true
+	@docker volume prune -f >/dev/null 2>&1 || true
+	@echo "✅ 强制清理完成"
+
 # 完全重置 (危险操作)
 reset:
 	@echo "⚠️  警告: 这将删除所有数据和配置!"
@@ -356,13 +378,20 @@ reset:
 	read confirm; \
 	if [ "$$confirm" = "yes" ]; then \
 		echo "🗑️  删除所有数据..."; \
-		make down; \
-		docker volume rm -f $$(docker volume ls -q | grep -E "(clickhouse|postgres|nats|redis)" 2>/dev/null) 2>/dev/null || true; \
+		make clean-all; \
 		rm -rf $(BACKUP_DIR) 2>/dev/null || true; \
 		echo "✅ 重置完成，所有数据已删除"; \
 	else \
 		echo "❌ 操作已取消"; \
 	fi
+
+# 快速重启 (清理后重新启动)
+restart-clean:
+	@echo "🔄 清理后重启所有服务..."
+	@make clean-all
+	@sleep 3
+	@make up
+	@echo "✅ 清理重启完成"
 
 # 开发环境初始化
 dev-init: install-deps up

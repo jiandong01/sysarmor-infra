@@ -24,11 +24,11 @@ services:
         hard: 262144
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+      test: ["CMD", "nc", "-z", "localhost", "8123"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 30s
+      retries: 5
+      start_period: 60s
 volumes:
   # ClickHouse数据卷
   clickhouse_data:
