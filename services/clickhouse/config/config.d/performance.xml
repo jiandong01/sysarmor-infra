@@ -1,0 +1,19 @@
+<clickhouse>
+    <!-- 系统级配置 -->
+    <max_concurrent_queries>100</max_concurrent_queries>
+    <max_connections>1000</max_connections>
+    
+    <!-- 后台任务 -->
+    <background_pool_size>16</background_pool_size>
+    <background_move_pool_size>8</background_move_pool_size>
+    <background_fetches_pool_size>8</background_fetches_pool_size>
+    
+    <!-- 合并优化 -->
+    <merge_tree>
+        <max_bytes_to_merge_at_max_space_in_pool>161061273600</max_bytes_to_merge_at_max_space_in_pool> <!-- 150GB -->
+        <max_bytes_to_merge_at_min_space_in_pool>1048576</max_bytes_to_merge_at_min_space_in_pool> <!-- 1MB -->
+        <max_replicated_merges_in_queue>16</max_replicated_merges_in_queue>
+        <number_of_free_entries_in_pool_to_lower_max_size_of_merge>8</number_of_free_entries_in_pool_to_lower_max_size_of_merge>
+        <max_suspicious_broken_parts>5</max_suspicious_broken_parts>
+    </merge_tree>
+</clickhouse>

@@ -1,5 +1,5 @@
 # SysArmor Infrastructure Services Management Makefile
-# 灵活管理NATS集群、ClickHouse、PostgreSQL、Redis等基础服务
+# 灵活管理NATS集群、ClickHouse等基础服务
 # 每个服务都有独立的docker-compose.yml文件
 
 .PHONY: help install-deps up down restart status health logs clean backup restore
@@ -10,7 +10,7 @@ BACKUP_DIR ?= ./backups
 LOG_LEVEL ?= info
 
 # 服务列表
-SERVICES := nats clickhouse postgres redis
+SERVICES := nats clickhouse
 AVAILABLE_SERVICES := $(SERVICES)
 
 # 默认目标
@@ -22,13 +22,9 @@ help:
 	@echo "  up                  - 启动所有服务"
 	@echo "  up-nats             - 仅启动NATS集群"
 	@echo "  up-clickhouse       - 仅启动ClickHouse"
-	@echo "  up-postgres         - 仅启动PostgreSQL"
-	@echo "  up-redis            - 仅启动Redis"
 	@echo "  down                - 停止所有服务"
 	@echo "  down-nats           - 仅停止NATS集群"
 	@echo "  down-clickhouse     - 仅停止ClickHouse"
-	@echo "  down-postgres       - 仅停止PostgreSQL"
-	@echo "  down-redis          - 仅停止Redis"
 	@echo "  restart             - 重启所有服务"
 	@echo ""
 	@echo "📊 监控和状态:"
@@ -38,8 +34,6 @@ help:
 	@echo "  logs-follow         - 实时跟踪日志"
 	@echo "  logs-nats           - 查看NATS日志"
 	@echo "  logs-clickhouse     - 查看ClickHouse日志"
-	@echo "  logs-postgres       - 查看PostgreSQL日志"
-	@echo "  logs-redis          - 查看Redis日志"
 	@echo ""
 	@echo "🔧 维护操作:"
 	@echo "  backup              - 备份所有数据"
@@ -53,8 +47,6 @@ help:
 	@echo "  dev-init            - 初始化开发环境"
 	@echo "  test-connection     - 测试所有服务连接"
 	@echo "  shell-clickhouse    - 进入ClickHouse容器"
-	@echo "  shell-postgres      - 进入PostgreSQL容器"
-	@echo "  shell-redis         - 进入Redis容器"
 	@echo ""
 	@echo "🔍 生产环境:"
 	@echo "  prod-check          - 生产环境部署检查"
@@ -65,13 +57,11 @@ help:
 	@echo "  NATS Monitor:   http://localhost:8222,8223,8224"
 	@echo "  NATS Surveyor:  http://localhost:7777"
 	@echo "  ClickHouse:     http://localhost:8123 (sysarmor/sysarmor123)"
-	@echo "  PostgreSQL:     localhost:5432 (sysarmor/sysarmor123)"
-	@echo "  Redis:          localhost:6379"
 	@echo ""
 	@echo "💡 使用示例:"
 	@echo "  make up SERVICES='nats clickhouse'  # 只启动NATS和ClickHouse"
-	@echo "  make down SERVICES='redis'          # 只停止Redis"
-	@echo "  make logs SERVICES='nats postgres'  # 查看NATS和PostgreSQL日志"
+	@echo "  make down SERVICES='clickhouse'          # 只停止ClickHouse"
+	@echo "  make logs SERVICES='nats clickhouse'  # 查看NATS和ClickHouse日志"
 
 # 安装系统依赖
 install-deps:
@@ -124,18 +114,6 @@ up-clickhouse:
 	@sleep 5
 	@make health-clickhouse
 
-up-postgres:
-	@echo "🚀 启动PostgreSQL..."
-	@cd services/postgres && docker compose up -d
-	@sleep 5
-	@make health-postgres
-
-up-redis:
-	@echo "🚀 启动Redis..."
-	@cd services/redis && docker compose up -d
-	@sleep 3
-	@make health-redis
-
 # 停止服务 (支持SERVICES参数)
 down:
 	@echo "🛑 停止SysArmor基础服务..."
@@ -159,14 +137,6 @@ down-clickhouse:
 	@echo "🛑 停止ClickHouse..."
 	@cd services/clickhouse && docker compose down
 
-down-postgres:
-	@echo "🛑 停止PostgreSQL..."
-	@cd services/postgres && docker compose down
-
-down-redis:
-	@echo "🛑 停止Redis..."
-	@cd services/redis && docker compose down
-
 # 重启所有服务
 restart: down up
 
@@ -187,7 +157,7 @@ status:
 	@docker ps --filter "name=sysarmor-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
 # 健康检查
-health: health-nats health-clickhouse health-postgres health-redis
+health: health-nats health-clickhouse
 
 health-nats:
 	@echo "🔍 检查NATS集群健康状态..."
@@ -210,22 +180,6 @@ health-clickhouse:
 		echo "✅ ClickHouse 正常"; \
 	else \
 		echo "❌ ClickHouse 异常"; \
-	fi
-
-health-postgres:
-	@echo "🔍 检查PostgreSQL健康状态..."
-	@if docker exec sysarmor-postgres pg_isready -U sysarmor -d sysarmor_meta >/dev/null 2>&1; then \
-		echo "✅ PostgreSQL 正常"; \
-	else \
-		echo "❌ PostgreSQL 异常"; \
-	fi
-
-health-redis:
-	@echo "🔍 检查Redis健康状态..."
-	@if docker exec sysarmor-redis redis-cli ping >/dev/null 2>&1; then \
-		echo "✅ Redis 正常"; \
-	else \
-		echo "❌ Redis 异常"; \
 	fi
 
 # 查看日志 (支持SERVICES参数)
@@ -258,37 +212,15 @@ logs-nats:
 logs-clickhouse:
 	@cd services/clickhouse && docker compose logs --tail=100
 
-logs-postgres:
-	@cd services/postgres && docker compose logs --tail=100
-
-logs-redis:
-	@cd services/redis && docker compose logs --tail=100
-
 # 进入容器shell
 shell-clickhouse:
 	@echo "🐚 进入ClickHouse容器..."
 	@docker exec -it sysarmor-clickhouse /bin/sh
 
-shell-postgres:
-	@echo "🐚 进入PostgreSQL容器..."
-	@docker exec -it sysarmor-postgres /bin/bash
-
-shell-redis:
-	@echo "🐚 进入Redis容器..."
-	@docker exec -it sysarmor-redis /bin/sh
-
 # 数据库客户端
 clickhouse-client:
 	@echo "🔗 连接ClickHouse客户端..."
 	@docker exec -it sysarmor-clickhouse clickhouse-client --user sysarmor --password sysarmor123
-
-postgres-client:
-	@echo "🔗 连接PostgreSQL客户端..."
-	@docker exec -it sysarmor-postgres psql -U sysarmor -d sysarmor_meta
-
-redis-client:
-	@echo "🔗 连接Redis客户端..."
-	@docker exec -it sysarmor-redis redis-cli
 
 # 测试连接
 test-connection:
@@ -306,11 +238,6 @@ test-connection:
 	@echo "测试ClickHouse连接:"
 	@echo "SELECT 'ClickHouse连接成功', version(), now()" | curl -s 'http://localhost:8123/' --data-binary @- 2>/dev/null && echo "" || echo "❌ ClickHouse连接失败"
 	@echo ""
-	@echo "测试PostgreSQL连接:"
-	@docker exec sysarmor-postgres psql -U sysarmor -d sysarmor_meta -c "SELECT 'PostgreSQL连接成功', version(), now();" 2>/dev/null || echo "❌ PostgreSQL连接失败"
-	@echo ""
-	@echo "测试Redis连接:"
-	@docker exec sysarmor-redis redis-cli ping 2>/dev/null || echo "❌ Redis连接失败"
 
 # 备份数据
 backup:
@@ -319,12 +246,6 @@ backup:
 	@TIMESTAMP=$$(date +%Y%m%d_%H%M%S); \
 	echo "备份ClickHouse数据..."; \
 	docker exec sysarmor-clickhouse clickhouse-client --user sysarmor --password sysarmor123 --query "SELECT * FROM sysarmor_events.events FORMAT CSVWithNames" > $(BACKUP_DIR)/clickhouse_events_$$TIMESTAMP.csv 2>/dev/null || echo "ClickHouse备份失败"; \
-	echo "备份PostgreSQL数据..."; \
-	docker exec sysarmor-postgres pg_dump -U sysarmor sysarmor_meta > $(BACKUP_DIR)/postgres_meta_$$TIMESTAMP.sql 2>/dev/null || echo "PostgreSQL备份失败"; \
-	echo "备份Redis数据..."; \
-	docker exec sysarmor-redis redis-cli --rdb /data/dump.rdb >/dev/null 2>&1 && docker cp sysarmor-redis:/data/dump.rdb $(BACKUP_DIR)/redis_$$TIMESTAMP.rdb 2>/dev/null || echo "Redis备份失败"; \
-	echo "备份配置文件..."; \
-	tar -czf $(BACKUP_DIR)/configs_$$TIMESTAMP.tar.gz services/ scripts/ Makefile 2>/dev/null || echo "配置备份失败"; \
 	echo "✅ 备份完成，文件保存在 $(BACKUP_DIR)/"
 
 # 恢复数据
@@ -361,9 +282,7 @@ clean-all:
 	@echo "清理数据卷..."
 	@docker volume ls -q --filter "name=sysarmor" | xargs -r docker volume rm -f 2>/dev/null || true
 	@docker volume ls -q --filter "name=clickhouse" | xargs -r docker volume rm -f 2>/dev/null || true
-	@docker volume ls -q --filter "name=postgres" | xargs -r docker volume rm -f 2>/dev/null || true
 	@docker volume ls -q --filter "name=nats" | xargs -r docker volume rm -f 2>/dev/null || true
-	@docker volume ls -q --filter "name=redis" | xargs -r docker volume rm -f 2>/dev/null || true
 	@echo "清理网络..."
 	@docker network ls --filter "name=sysarmor" -q | xargs -r docker network rm 2>/dev/null || true
 	@echo "清理未使用的资源..."

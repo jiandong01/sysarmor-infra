@@ -1,0 +1,38 @@
+<clickhouse>
+    <profiles>
+        <default>
+            <!-- 内存配置 -->
+            <max_memory_usage>10000000000</max_memory_usage> <!-- 10GB -->
+            <max_memory_usage_for_user>8000000000</max_memory_usage_for_user> <!-- 8GB -->
+            
+            <!-- 线程配置 -->
+            <max_threads>16</max_threads>
+            
+            <!-- 插入优化 -->
+            <max_insert_threads>8</max_insert_threads>
+            <max_insert_block_size>1048576</max_insert_block_size> <!-- 1M rows -->
+            <min_insert_block_size_rows>1000000</min_insert_block_size_rows>
+            <min_insert_block_size_bytes>100000000</min_insert_block_size_bytes> <!-- 100MB -->
+            
+            <!-- 查询缓存 -->
+            <use_query_cache>1</use_query_cache>
+        </default>
+        
+        <!-- 为sysarmor用户创建专门的profile -->
+        <sysarmor_profile>
+            <!-- 继承default的设置 -->
+            <profile>default</profile>
+            
+            <!-- 额外的优化设置 -->
+            <optimize_on_insert>0</optimize_on_insert>
+            <distributed_product_mode>global</distributed_product_mode>
+        </sysarmor_profile>
+    </profiles>
+    
+    <users>
+        <!-- 更新sysarmor用户使用优化的profile -->
+        <sysarmor>
+            <profile>sysarmor_profile</profile>
+        </sysarmor>
+    </users>
+</clickhouse>
