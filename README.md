@@ -95,7 +95,31 @@ make up            # 启动所有服务
 make health        # 检查服务健康状态
 ```
 
-### 3. 灵活部署示例
+### 3. JetStream配置 (消息持久化)
+
+NATS集群已启用JetStream，提供消息持久化、重放和高级处理能力：
+
+```bash
+# 启动NATS集群后，设置JetStream Streams
+make jetstream-setup     # 一键设置sysdig事件Stream (推荐)
+
+# 查看JetStream状态
+make jetstream-info      # 查看Stream和Consumer信息
+
+# 测试消息发布
+make jetstream-test      # 验证JetStream功能
+
+# 交互式管理
+make jetstream-manage    # 进入交互式JetStream管理
+```
+
+**JetStream优势**:
+- ✅ **消息持久化**: 消息不会因consumer离线而丢失
+- ✅ **向后兼容**: Collector端无需修改，自动捕获 `events.sysdig.*` 消息
+- ✅ **高可用**: 3副本确保数据安全
+- ✅ **消息重放**: 支持历史数据分析和故障恢复
+
+### 4. 灵活部署示例
 
 ```bash
 # 只启动消息队列和数据库

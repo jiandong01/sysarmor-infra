@@ -48,6 +48,12 @@ help:
 	@echo "  test-connection     - 测试所有服务连接"
 	@echo "  shell-clickhouse    - 进入ClickHouse容器"
 	@echo ""
+	@echo "🚀 JetStream管理:"
+	@echo "  jetstream-setup     - 设置JetStream Streams和Consumers"
+	@echo "  jetstream-info      - 查看JetStream状态信息"
+	@echo "  jetstream-test      - 测试JetStream消息发布"
+	@echo "  jetstream-cleanup   - 清理JetStream配置"
+	@echo ""
 	@echo "🔍 生产环境:"
 	@echo "  prod-check          - 生产环境部署检查"
 	@echo "  prod-deploy         - 生产环境部署"
@@ -383,3 +389,30 @@ monitor:
 	else \
 		echo "请手动打开上述URL"; \
 	fi
+
+# JetStream管理命令
+jetstream-setup:
+	@echo "🚀 设置JetStream Streams和Consumers..."
+	@chmod +x scripts/setup-jetstream.sh
+	@./scripts/setup-jetstream.sh setup
+
+jetstream-info:
+	@echo "📊 查看JetStream状态信息..."
+	@chmod +x scripts/setup-jetstream.sh
+	@./scripts/setup-jetstream.sh info
+
+jetstream-test:
+	@echo "🧪 测试JetStream消息发布..."
+	@chmod +x scripts/setup-jetstream.sh
+	@./scripts/setup-jetstream.sh test
+
+jetstream-cleanup:
+	@echo "🧹 清理JetStream配置..."
+	@chmod +x scripts/setup-jetstream.sh
+	@./scripts/setup-jetstream.sh cleanup
+
+# JetStream交互式管理
+jetstream-manage:
+	@echo "🎛️  JetStream交互式管理..."
+	@chmod +x scripts/setup-jetstream.sh
+	@./scripts/setup-jetstream.sh
