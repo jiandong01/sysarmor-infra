@@ -394,25 +394,54 @@ monitor:
 jetstream-setup:
 	@echo "🚀 设置JetStream Streams和Consumers..."
 	@chmod +x scripts/setup-jetstream.sh
-	@./scripts/setup-jetstream.sh setup
+	@./scripts/setup-jetstream.sh setup || { \
+		echo ""; \
+		echo "💡 提示: 请确保NATS集群已启动"; \
+		echo "   make up-nats"; \
+		echo "   make health-nats"; \
+		echo "   然后重新运行: make jetstream-setup"; \
+		exit 1; \
+	}
 
 jetstream-info:
 	@echo "📊 查看JetStream状态信息..."
 	@chmod +x scripts/setup-jetstream.sh
-	@./scripts/setup-jetstream.sh info
+	@./scripts/setup-jetstream.sh info || { \
+		echo ""; \
+		echo "💡 提示: 请确保NATS集群已启动"; \
+		echo "   make up-nats"; \
+		exit 1; \
+	}
 
 jetstream-test:
 	@echo "🧪 测试JetStream消息发布..."
 	@chmod +x scripts/setup-jetstream.sh
-	@./scripts/setup-jetstream.sh test
+	@./scripts/setup-jetstream.sh test || { \
+		echo ""; \
+		echo "💡 提示: 请确保NATS集群已启动且JetStream已设置"; \
+		echo "   make up-nats"; \
+		echo "   make jetstream-setup"; \
+		exit 1; \
+	}
 
 jetstream-cleanup:
 	@echo "🧹 清理JetStream配置..."
 	@chmod +x scripts/setup-jetstream.sh
-	@./scripts/setup-jetstream.sh cleanup
+	@./scripts/setup-jetstream.sh cleanup || { \
+		echo ""; \
+		echo "💡 提示: 请确保NATS集群已启动"; \
+		echo "   make up-nats"; \
+		exit 1; \
+	}
 
 # JetStream交互式管理
 jetstream-manage:
 	@echo "🎛️  JetStream交互式管理..."
 	@chmod +x scripts/setup-jetstream.sh
-	@./scripts/setup-jetstream.sh
+	@./scripts/setup-jetstream.sh || { \
+		echo ""; \
+		echo "💡 提示: 请确保NATS集群已启动"; \
+		echo "   make up-nats"; \
+		echo "   make health-nats"; \
+		exit 1; \
+	}

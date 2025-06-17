@@ -59,14 +59,27 @@ check_nats_cli() {
 check_nats_connection() {
     echo -e "${BLUE}🔍 检查NATS集群连接...${NC}"
     
+    local connection_failed=0
     for url in $(echo $NATS_URLS | tr "," "\n"); do
-        if nats --server="$url" server ping &>/dev/null; then
+        # 使用简单的发布测试来验证连接，而不是server ping
+        if echo "test" | nats --server="$url" pub "test.connection" &>/dev/null; then
             echo -e "${GREEN}✅ $url 连接成功${NC}"
         else
             echo -e "${RED}❌ $url 连接失败${NC}"
-            return 1
+            connection_failed=1
         fi
     done
+    
+    if [ $connection_failed -eq 1 ]; then
+        echo -e "${YELLOW}⚠️  NATS集群连接失败！${NC}"
+        echo -e "${BLUE}💡 请先启动NATS集群:${NC}"
+        echo "   cd sysarmor-infra-nats"
+        echo "   make up-nats"
+        echo "   make health-nats"
+        echo ""
+        echo -e "${BLUE}然后重新运行此脚本${NC}"
+        return 1
+    fi
     
     echo -e "${GREEN}✅ NATS集群连接正常${NC}"
 }
