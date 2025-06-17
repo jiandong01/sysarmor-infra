@@ -49,10 +49,10 @@ help:
 	@echo "  shell-clickhouse    - 进入ClickHouse容器"
 	@echo ""
 	@echo "🚀 JetStream管理:"
-	@echo "  jetstream-setup     - 设置JetStream Streams和Consumers"
-	@echo "  jetstream-info      - 查看JetStream状态信息"
-	@echo "  jetstream-test      - 测试JetStream消息发布"
-	@echo "  jetstream-cleanup   - 清理JetStream配置"
+	@echo "  jetstream-setup     - 创建JetStream Stream"
+	@echo "  jetstream-info      - 查看Stream状态信息"
+	@echo "  jetstream-test      - 测试消息发布"
+	@echo "  jetstream-cleanup   - 清理Stream"
 	@echo ""
 	@echo "🔍 生产环境:"
 	@echo "  prod-check          - 生产环境部署检查"
@@ -431,17 +431,5 @@ jetstream-cleanup:
 		echo ""; \
 		echo "💡 提示: 请确保NATS集群已启动"; \
 		echo "   make up-nats"; \
-		exit 1; \
-	}
-
-# JetStream交互式管理
-jetstream-manage:
-	@echo "🎛️  JetStream交互式管理..."
-	@chmod +x scripts/setup-jetstream.sh
-	@./scripts/setup-jetstream.sh || { \
-		echo ""; \
-		echo "💡 提示: 请确保NATS集群已启动"; \
-		echo "   make up-nats"; \
-		echo "   make health-nats"; \
 		exit 1; \
 	}

@@ -14,13 +14,7 @@ NC='\033[0m' # No Color
 
 # 配置变量
 NATS_URLS="nats://localhost:4222,nats://localhost:4223,nats://localhost:4224"
-STREAM_NAME="SYSDIG_EVENTS"
-SUBJECTS="events.sysdig.*"
-RETENTION_POLICY="limits"  # limits, interest, workqueue
-MAX_AGE="24h"              # 消息保留时间
-MAX_MSGS=1000000           # 最大消息数量
-MAX_BYTES="10GB"           # 最大存储大小
-REPLICAS=3                 # 副本数量（高可用）
+CONFIG_FILE="configs/jetstream-config.json"
 
 echo -e "${BLUE}🚀 SysArmor JetStream Stream 管理${NC}"
 echo "=================================="
@@ -61,7 +55,6 @@ check_nats_connection() {
     
     local connection_failed=0
     for url in $(echo $NATS_URLS | tr "," "\n"); do
-        # 使用简单的发布测试来验证连接，而不是server ping
         if echo "test" | nats --server="$url" pub "test.connection" &>/dev/null; then
             echo -e "${GREEN}✅ $url 连接成功${NC}"
         else
@@ -76,9 +69,7 @@ check_nats_connection() {
         echo "   cd sysarmor-infra-nats"
         echo "   make up-nats"
         echo "   make health-nats"
-        echo ""
-        echo -e "${BLUE}然后重新运行此脚本${NC}"
-        return 1
+        exit 1
     fi
     
     echo -e "${GREEN}✅ NATS集群连接正常${NC}"
@@ -100,77 +91,58 @@ check_jetstream_status() {
     fi
 }
 
-# 创建Stream
+# 创建Stream (仅使用JSON配置)
 create_stream() {
     echo -e "${BLUE}📦 创建SysArmor事件Stream...${NC}"
     
-    # 检查Stream是否已存在
-    if nats --server="$NATS_URLS" stream info "$STREAM_NAME" &>/dev/null; then
-        echo -e "${YELLOW}⚠️  Stream '$STREAM_NAME' 已存在${NC}"
-        read -p "是否要删除并重新创建? (y/N): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            echo -e "${YELLOW}🗑️  删除现有Stream...${NC}"
-            nats --server="$NATS_URLS" stream delete "$STREAM_NAME" --force
-        else
-            echo -e "${BLUE}ℹ️  保持现有Stream配置${NC}"
-            return 0
-        fi
+    # 检查配置文件是否存在
+    if [ ! -f "$CONFIG_FILE" ]; then
+        echo -e "${RED}❌ 配置文件不存在: $CONFIG_FILE${NC}"
+        exit 1
     fi
     
-    # 创建新Stream
-    echo -e "${GREEN}🔨 创建新Stream: $STREAM_NAME${NC}"
-    nats --server="$NATS_URLS" stream create "$STREAM_NAME" \
-        --subjects="$SUBJECTS" \
-        --retention="$RETENTION_POLICY" \
-        --max-age="$MAX_AGE" \
-        --max-msgs="$MAX_MSGS" \
-        --max-bytes="$MAX_BYTES" \
-        --replicas="$REPLICAS" \
-        --storage=file \
-        --discard=old \
-        --dupe-window=2m
+    # 检查jq工具
+    if ! command -v jq &> /dev/null; then
+        echo -e "${RED}❌ jq工具未安装，请先安装jq${NC}"
+        echo "Ubuntu/Debian: sudo apt-get install jq"
+        echo "CentOS/RHEL: sudo yum install jq"
+        echo "macOS: brew install jq"
+        exit 1
+    fi
     
-    echo -e "${GREEN}✅ Stream创建成功${NC}"
-}
-
-# 创建Consumer示例
-create_consumer_example() {
-    echo -e "${BLUE}👥 创建Consumer示例...${NC}"
+    # 获取Stream名称
+    local stream_name=$(jq -r '.name' "$CONFIG_FILE")
     
-    # 创建持久Consumer
-    CONSUMER_NAME="sysdig-processor"
+    # 检查Stream是否已存在，如果存在则跳过
+    if nats --server="$NATS_URLS" stream info "$stream_name" &>/dev/null; then
+        echo -e "${YELLOW}⚠️  Stream '$stream_name' 已存在，跳过创建${NC}"
+        return 0
+    fi
     
-    if nats --server="$NATS_URLS" consumer info "$STREAM_NAME" "$CONSUMER_NAME" &>/dev/null; then
-        echo -e "${YELLOW}⚠️  Consumer '$CONSUMER_NAME' 已存在${NC}"
+    # 使用JSON配置创建Stream
+    echo -e "${GREEN}🔨 创建新Stream: $stream_name${NC}"
+    
+    if nats --server="$NATS_URLS" stream add --config="$CONFIG_FILE"; then
+        echo -e "${GREEN}✅ Stream创建成功${NC}"
     else
-        echo -e "${GREEN}🔨 创建Consumer: $CONSUMER_NAME${NC}"
-        nats --server="$NATS_URLS" consumer create "$STREAM_NAME" "$CONSUMER_NAME" \
-            --filter="events.sysdig.*" \
-            --ack=explicit \
-            --pull \
-            --deliver=all \
-            --max-deliver=3 \
-            --wait=30s \
-            --replay=instant
-        
-        echo -e "${GREEN}✅ Consumer创建成功${NC}"
+        echo -e "${RED}❌ Stream创建失败${NC}"
+        exit 1
     fi
 }
 
 # 显示Stream信息
 show_stream_info() {
+    local stream_name=$(jq -r '.name' "$CONFIG_FILE")
+    
     echo -e "${BLUE}📊 Stream信息:${NC}"
     echo "=============="
-    nats --server="$NATS_URLS" stream info "$STREAM_NAME"
-    
-    echo -e "\n${BLUE}👥 Consumers:${NC}"
-    echo "============"
-    nats --server="$NATS_URLS" consumer ls "$STREAM_NAME"
+    nats --server="$NATS_URLS" stream info "$stream_name"
 }
 
 # 测试消息发布
 test_publish() {
+    local stream_name=$(jq -r '.name' "$CONFIG_FILE")
+    
     echo -e "${BLUE}🧪 测试消息发布...${NC}"
     
     # 发布测试消息
@@ -185,34 +157,21 @@ test_publish() {
     
     # 显示Stream统计
     echo -e "\n${BLUE}📈 Stream统计:${NC}"
-    nats --server="$NATS_URLS" stream info "$STREAM_NAME" --json | jq '.state'
+    nats --server="$NATS_URLS" stream info "$stream_name" --json | jq '.state'
 }
 
 # 清理Stream
 cleanup_stream() {
+    local stream_name=$(jq -r '.name' "$CONFIG_FILE")
+    
     echo -e "${YELLOW}🧹 清理Stream...${NC}"
     
-    read -p "确认删除Stream '$STREAM_NAME' 及所有数据? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        nats --server="$NATS_URLS" stream delete "$STREAM_NAME" --force
+    if nats --server="$NATS_URLS" stream info "$stream_name" &>/dev/null; then
+        nats --server="$NATS_URLS" stream delete "$stream_name" --force
         echo -e "${GREEN}✅ Stream已删除${NC}"
     else
-        echo -e "${BLUE}ℹ️  操作已取消${NC}"
+        echo -e "${BLUE}ℹ️  Stream不存在${NC}"
     fi
-}
-
-# 主菜单
-show_menu() {
-    echo -e "\n${BLUE}📋 选择操作:${NC}"
-    echo "1) 完整设置 (推荐)"
-    echo "2) 仅创建Stream"
-    echo "3) 创建Consumer"
-    echo "4) 查看Stream信息"
-    echo "5) 测试消息发布"
-    echo "6) 清理Stream"
-    echo "7) 退出"
-    echo
 }
 
 # 主函数
@@ -222,73 +181,30 @@ main() {
     check_nats_connection
     check_jetstream_status
     
-    if [ $# -eq 0 ]; then
-        # 交互模式
-        while true; do
-            show_menu
-            read -p "请选择 (1-7): " choice
-            case $choice in
-                1)
-                    create_stream
-                    create_consumer_example
-                    show_stream_info
-                    test_publish
-                    ;;
-                2)
-                    create_stream
-                    ;;
-                3)
-                    create_consumer_example
-                    ;;
-                4)
-                    show_stream_info
-                    ;;
-                5)
-                    test_publish
-                    ;;
-                6)
-                    cleanup_stream
-                    ;;
-                7)
-                    echo -e "${GREEN}👋 再见!${NC}"
-                    exit 0
-                    ;;
-                *)
-                    echo -e "${RED}❌ 无效选择${NC}"
-                    ;;
-            esac
-            echo
-        done
-    else
-        # 命令行模式
-        case $1 in
-            "setup")
-                create_stream
-                create_consumer_example
-                show_stream_info
-                ;;
-            "create-stream")
-                create_stream
-                ;;
-            "create-consumer")
-                create_consumer_example
-                ;;
-            "info")
-                show_stream_info
-                ;;
-            "test")
-                test_publish
-                ;;
-            "cleanup")
-                cleanup_stream
-                ;;
-            *)
-                echo "用法: $0 [setup|create-stream|create-consumer|info|test|cleanup]"
-                echo "或直接运行 $0 进入交互模式"
-                exit 1
-                ;;
-        esac
-    fi
+    # 根据参数执行不同操作
+    case "${1:-setup}" in
+        "setup")
+            create_stream
+            show_stream_info
+            ;;
+        "info")
+            show_stream_info
+            ;;
+        "test")
+            test_publish
+            ;;
+        "cleanup")
+            cleanup_stream
+            ;;
+        *)
+            echo "用法: $0 [setup|info|test|cleanup]"
+            echo "  setup   - 创建Stream (默认)"
+            echo "  info    - 查看Stream信息"
+            echo "  test    - 测试消息发布"
+            echo "  cleanup - 清理Stream"
+            exit 1
+            ;;
+    esac
 }
 
 # 运行主函数
