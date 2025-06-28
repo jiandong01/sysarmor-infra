@@ -20,7 +20,7 @@ help:
 	@echo ""
 	@echo "🚀 服务部署 (支持参数 SERVICES='service1 service2'):"
 	@echo "  up                  - 启动所有服务"
-	@echo "  up-nats             - 仅启动NATS集群"
+	@echo "  up-nats             - 启动NATS集群并自动设置JetStream"
 	@echo "  up-clickhouse       - 仅启动ClickHouse"
 	@echo "  down                - 停止所有服务"
 	@echo "  down-nats           - 仅停止NATS集群"
@@ -111,8 +111,17 @@ up:
 up-nats:
 	@echo "🚀 启动NATS集群..."
 	@cd services/nats && docker compose up -d
-	@sleep 5
+	@echo "⏳ 等待NATS集群启动..."
+	@sleep 8
 	@make health-nats
+	@echo ""
+	@echo "🚀 自动设置JetStream..."
+	@make jetstream-setup || { \
+		echo "⚠️  JetStream设置失败，但NATS集群已启动"; \
+		echo "💡 可以稍后手动运行: make jetstream-setup"; \
+	}
+	@echo ""
+	@echo "🎉 NATS集群和JetStream启动完成!"
 
 up-clickhouse:
 	@echo "🚀 启动ClickHouse..."
