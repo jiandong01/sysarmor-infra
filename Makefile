@@ -128,6 +128,11 @@ up-clickhouse:
 	@cd services/clickhouse && docker compose up -d
 	@sleep 5
 	@make health-clickhouse
+	@echo "🗄️  创建 sysarmor 数据库..."
+	@docker exec sysarmor-clickhouse clickhouse-client --user sysarmor --password sysarmor123 --query "CREATE DATABASE IF NOT EXISTS sysarmor" 2>/dev/null || { \
+		echo "⚠️  数据库创建失败，可能已存在或权限不足"; \
+	}
+	@echo "✅ ClickHouse 启动完成，sysarmor 数据库已准备就绪"
 
 # 停止服务 (支持SERVICES参数)
 down:
