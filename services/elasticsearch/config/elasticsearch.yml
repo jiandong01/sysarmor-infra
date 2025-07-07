@@ -1,28 +1,18 @@
 # Elasticsearch配置文件
 # SysArmor EDR/XDR平台专用配置
-# 配置参数通过环境变量统一管理
-
-# 集群配置
-cluster.name: ${ELASTICSEARCH_CLUSTER_NAME}
-node.name: ${ELASTICSEARCH_NODE_NAME}
-
-# 网络配置
-network.host: ${ELASTICSEARCH_NETWORK_HOST}
-http.port: ${ELASTICSEARCH_HTTP_PORT}
-transport.port: ${ELASTICSEARCH_TRANSPORT_PORT}
 
 # 发现配置
 discovery.type: single-node
 
 # 路径配置
-path.data: ${ELASTICSEARCH_DATA_PATH}
-path.logs: ${ELASTICSEARCH_LOGS_PATH}
+path.data: /usr/share/elasticsearch/data
+path.logs: /usr/share/elasticsearch/logs
 
 # 内存配置
 bootstrap.memory_lock: false
 
 # 安全配置
-xpack.security.enabled: ${XPACK_SECURITY_ENABLED}
+xpack.security.enabled: false
 xpack.security.enrollment.enabled: false
 xpack.security.http.ssl.enabled: false
 xpack.security.transport.ssl.enabled: false

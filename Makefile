@@ -2,6 +2,10 @@
 # 灵活管理NATS集群、ClickHouse等基础服务
 # 每个服务都有独立的docker-compose.yml文件
 
+# 加载环境变量配置
+include .env
+export
+
 .PHONY: help install-deps up down restart status health logs clean backup restore
 
 # 环境变量
@@ -69,12 +73,12 @@ help:
 	@echo "  prod-deploy         - 生产环境部署"
 	@echo ""
 	@echo "📋 服务访问信息:"
-	@echo "  NATS Cluster:   nats://localhost:4222,4223,4224"
-	@echo "  NATS Monitor:   http://localhost:8222,8223,8224"
-	@echo "  NATS Surveyor:  http://localhost:7777"
-	@echo "  ClickHouse:     http://localhost:8123 (sysarmor/sysarmor123)"
-	@echo "  Elasticsearch:  http://localhost:9200"
-	@echo "  Kibana:         http://localhost:5601"
+	@echo "  NATS Cluster:   nats://$(EXTERNAL_HOST):$(NATS_PORT_1),$(NATS_PORT_2),$(NATS_PORT_3)"
+	@echo "  NATS Monitor:   http://$(EXTERNAL_HOST):$(NATS_MONITOR_PORT_1),$(NATS_MONITOR_PORT_2),$(NATS_MONITOR_PORT_3)"
+	@echo "  NATS Surveyor:  http://$(EXTERNAL_HOST):$(NATS_SURVEYOR_PORT)"
+	@echo "  ClickHouse:     http://$(EXTERNAL_HOST):$(CLICKHOUSE_HTTP_PORT) ($(CLICKHOUSE_USER)/$(CLICKHOUSE_PASSWORD))"
+	@echo "  Elasticsearch:  http://$(EXTERNAL_HOST):$(ELASTICSEARCH_HTTP_PORT)"
+	@echo "  Kibana:         http://$(EXTERNAL_HOST):$(KIBANA_PORT)"
 	@echo ""
 	@echo "💡 使用示例:"
 	@echo "  make up SERVICES='nats clickhouse'  # 只启动NATS和ClickHouse"
@@ -148,7 +152,9 @@ up-clickhouse:
 
 up-elasticsearch:
 	@echo "🚀 启动Elasticsearch和Kibana..."
-	@cd services/elasticsearch && docker compose up -d
+	@cd services/elasticsearch && \
+	export $$(cat ../../.env | grep -v '^#' | xargs) && \
+	docker compose up -d
 	@echo "⏳ 等待Elasticsearch启动..."
 	@sleep 15
 	@make health-elasticsearch
@@ -161,7 +167,7 @@ up-elasticsearch:
 		echo "⚠️  Kibana索引模式创建失败，可以稍后手动运行: make kibana-setup-index-pattern"; \
 	}
 	@echo "✅ Elasticsearch和Kibana启动完成!"
-	@echo "💡 现在可以直接访问 Kibana 查看数据: http://localhost:5601"
+	@echo "💡 现在可以直接访问 Kibana 查看数据: http://$(EXTERNAL_HOST):$(KIBANA_PORT)"
 
 # 停止服务 (支持SERVICES参数)
 down:
@@ -214,14 +220,14 @@ health: health-nats health-clickhouse health-elasticsearch
 
 health-nats:
 	@echo "🔍 检查NATS集群健康状态..."
-	@for port in 8222 8223 8224; do \
-		if curl -s http://localhost:$$port/healthz >/dev/null 2>&1; then \
+	@for port in $(NATS_MONITOR_PORT_1) $(NATS_MONITOR_PORT_2) $(NATS_MONITOR_PORT_3); do \
+		if curl -s http://$(EXTERNAL_HOST):$$port/healthz >/dev/null 2>&1; then \
 			echo "✅ NATS节点 :$$port 正常"; \
 		else \
 			echo "❌ NATS节点 :$$port 异常"; \
 		fi; \
 	done
-	@if curl -s http://localhost:7777 >/dev/null 2>&1; then \
+	@if curl -s http://$(EXTERNAL_HOST):$(NATS_SURVEYOR_PORT) >/dev/null 2>&1; then \
 		echo "✅ NATS Surveyor 正常"; \
 	else \
 		echo "❌ NATS Surveyor 异常"; \
@@ -229,7 +235,7 @@ health-nats:
 
 health-clickhouse:
 	@echo "🔍 检查ClickHouse健康状态..."
-	@if curl -s http://localhost:8123/ping >/dev/null 2>&1; then \
+	@if curl -s http://$(EXTERNAL_HOST):$(CLICKHOUSE_HTTP_PORT)/ping >/dev/null 2>&1; then \
 		echo "✅ ClickHouse 正常"; \
 	else \
 		echo "❌ ClickHouse 异常"; \
@@ -475,18 +481,15 @@ jetstream-cleanup:
 # Elasticsearch管理命令
 health-elasticsearch:
 	@echo "🔍 检查Elasticsearch健康状态..."
-	@cd services/elasticsearch && \
-	ES_PORT=$$(grep ELASTICSEARCH_HTTP_PORT .env | cut -d'=' -f2) && \
-	KIBANA_PORT=$$(grep KIBANA_PORT .env | cut -d'=' -f2) && \
-	if curl -s http://localhost:$$ES_PORT/_cluster/health >/dev/null 2>&1; then \
-		echo "✅ Elasticsearch 正常 (端口: $$ES_PORT)"; \
+	@if curl -s http://$(EXTERNAL_HOST):$(ELASTICSEARCH_HTTP_PORT)/_cluster/health >/dev/null 2>&1; then \
+		echo "✅ Elasticsearch 正常 (端口: $(ELASTICSEARCH_HTTP_PORT))"; \
 	else \
-		echo "❌ Elasticsearch 异常 (端口: $$ES_PORT)"; \
-	fi && \
-	if curl -s http://localhost:$$KIBANA_PORT/api/status >/dev/null 2>&1; then \
-		echo "✅ Kibana 正常 (端口: $$KIBANA_PORT)"; \
+		echo "❌ Elasticsearch 异常 (端口: $(ELASTICSEARCH_HTTP_PORT))"; \
+	fi
+	@if curl -s http://$(EXTERNAL_HOST):$(KIBANA_PORT)/api/status >/dev/null 2>&1; then \
+		echo "✅ Kibana 正常 (端口: $(KIBANA_PORT))"; \
 	else \
-		echo "❌ Kibana 异常 (端口: $$KIBANA_PORT)"; \
+		echo "❌ Kibana 异常 (端口: $(KIBANA_PORT))"; \
 	fi
 
 logs-elasticsearch:
@@ -502,73 +505,32 @@ shell-kibana:
 
 elasticsearch-setup-template:
 	@echo "📋 创建Elasticsearch索引模板..."
-	@cd services/elasticsearch && \
-	ES_PORT=$$(grep ELASTICSEARCH_HTTP_PORT .env | cut -d'=' -f2) && \
-	TEMPLATE_NAME=$$(grep INDEX_TEMPLATE_NAME .env | cut -d'=' -f2) && \
-	curl -X PUT "http://localhost:$$ES_PORT/_index_template/$$TEMPLATE_NAME" \
+	@curl -X PUT "http://$(EXTERNAL_HOST):$(ELASTICSEARCH_HTTP_PORT)/_index_template/$(INDEX_TEMPLATE_NAME)" \
 		-H "Content-Type: application/json" \
-		-d @templates/sysarmor-events-template.json \
+		-d @services/elasticsearch/templates/sysarmor-events-template.json \
 		2>/dev/null && echo "✅ 索引模板创建成功" || echo "❌ 索引模板创建失败"
 
 kibana-setup-index-pattern:
 	@echo "📋 创建Kibana索引模式..."
 	@cd services/elasticsearch && \
-	ES_PORT=$$(grep ELASTICSEARCH_HTTP_PORT .env | cut -d'=' -f2) && \
-	KIBANA_PORT=$$(grep KIBANA_PORT .env | cut -d'=' -f2) && \
-	INDEX_PATTERN=$$(grep INDEX_PATTERN .env | cut -d'=' -f2) && \
-	echo "⏳ 等待Kibana启动..." && \
-	max_attempts=30; attempt=0; \
-	while [ $$attempt -lt $$max_attempts ]; do \
-		if curl -s http://localhost:$$KIBANA_PORT/api/status >/dev/null 2>&1; then \
-			echo "✅ Kibana已启动"; \
-			break; \
-		fi; \
-		echo "等待中... ($$((attempt + 1))/$$max_attempts)"; \
-		sleep 5; \
-		attempt=$$((attempt + 1)); \
-	done && \
-	if [ $$attempt -eq $$max_attempts ]; then \
-		echo "❌ Kibana启动超时"; \
-		exit 1; \
-	fi && \
-	echo "📋 创建索引模式: $$INDEX_PATTERN" && \
-	curl -X POST "http://localhost:$$KIBANA_PORT/api/saved_objects/_import" \
-		-H "Content-Type: application/json" \
-		-H "kbn-xsrf: true" \
-		-d "{ \
-			\"version\": \"8.11.0\", \
-			\"objects\": [{ \
-				\"id\": \"$$INDEX_PATTERN\", \
-				\"type\": \"index-pattern\", \
-				\"attributes\": { \
-					\"title\": \"$$INDEX_PATTERN\", \
-					\"timeFieldName\": \"@timestamp\" \
-				} \
-			}] \
-		}" 2>/dev/null && echo "✅ 索引模式创建成功" || echo "⚠️  索引模式创建可能失败"
+	chmod +x templates/create-index-pattern.sh && \
+	KIBANA_PORT=$(KIBANA_PORT) INDEX_PATTERN=$(INDEX_PATTERN) ./templates/create-index-pattern.sh
 
 elasticsearch-info:
 	@echo "📊 Elasticsearch集群信息:"
 	@echo "========================"
-	@cd services/elasticsearch && \
-	ES_PORT=$$(grep ELASTICSEARCH_HTTP_PORT .env | cut -d'=' -f2) && \
-	curl -s "http://localhost:$$ES_PORT/_cluster/health?pretty" 2>/dev/null || echo "❌ 无法连接到Elasticsearch" && \
-	echo "" && \
-	echo "📋 索引信息:" && \
-	INDEX_PATTERN=$$(grep INDEX_PATTERN .env | cut -d'=' -f2) && \
-	curl -s "http://localhost:$$ES_PORT/_cat/indices/$$INDEX_PATTERN?v" 2>/dev/null || echo "❌ 无法获取索引信息"
+	@curl -s "http://$(EXTERNAL_HOST):$(ELASTICSEARCH_HTTP_PORT)/_cluster/health?pretty" 2>/dev/null || echo "❌ 无法连接到Elasticsearch"
+	@echo ""
+	@echo "📋 索引信息:"
+	@curl -s "http://$(EXTERNAL_HOST):$(ELASTICSEARCH_HTTP_PORT)/_cat/indices/$(INDEX_PATTERN)?v" 2>/dev/null || echo "❌ 无法获取索引信息"
 
 elasticsearch-test:
 	@echo "🧪 测试Elasticsearch连接和功能..."
-	@cd services/elasticsearch && \
-	ES_PORT=$$(grep ELASTICSEARCH_HTTP_PORT .env | cut -d'=' -f2) && \
-	KIBANA_PORT=$$(grep KIBANA_PORT .env | cut -d'=' -f2) && \
-	TEMPLATE_NAME=$$(grep INDEX_TEMPLATE_NAME .env | cut -d'=' -f2) && \
-	echo "测试连接:" && \
-	curl -s "http://localhost:$$ES_PORT/" 2>/dev/null && echo "✅ Elasticsearch连接成功 (端口: $$ES_PORT)" || echo "❌ Elasticsearch连接失败" && \
-	echo "" && \
-	echo "测试索引模板:" && \
-	curl -s "http://localhost:$$ES_PORT/_index_template/$$TEMPLATE_NAME" >/dev/null 2>&1 && echo "✅ 索引模板存在" || echo "❌ 索引模板不存在" && \
-	echo "" && \
-	echo "测试Kibana:" && \
-	curl -s "http://localhost:$$KIBANA_PORT/api/status" >/dev/null 2>&1 && echo "✅ Kibana连接成功 (端口: $$KIBANA_PORT)" || echo "❌ Kibana连接失败"
+	@echo "测试连接:"
+	@curl -s "http://$(EXTERNAL_HOST):$(ELASTICSEARCH_HTTP_PORT)/" 2>/dev/null && echo "✅ Elasticsearch连接成功 (端口: $(ELASTICSEARCH_HTTP_PORT))" || echo "❌ Elasticsearch连接失败"
+	@echo ""
+	@echo "测试索引模板:"
+	@curl -s "http://$(EXTERNAL_HOST):$(ELASTICSEARCH_HTTP_PORT)/_index_template/$(INDEX_TEMPLATE_NAME)" >/dev/null 2>&1 && echo "✅ 索引模板存在" || echo "❌ 索引模板不存在"
+	@echo ""
+	@echo "测试Kibana:"
+	@curl -s "http://$(EXTERNAL_HOST):$(KIBANA_PORT)/api/status" >/dev/null 2>&1 && echo "✅ Kibana连接成功 (端口: $(KIBANA_PORT))" || echo "❌ Kibana连接失败"
