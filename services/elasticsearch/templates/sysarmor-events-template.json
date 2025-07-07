@@ -1,0 +1,43 @@
+{
+    "index_patterns": [
+        "sysarmor-events-*"
+    ],
+    "template": {
+        "settings": {
+            "number_of_shards": 1,
+            "number_of_replicas": 0,
+            "index.refresh_interval": "5s"
+        },
+        "mappings": {
+            "properties": {
+                "@timestamp": {
+                    "type": "date"
+                },
+                "event_id": {
+                    "type": "keyword"
+                },
+                "host_name": {
+                    "type": "keyword"
+                },
+                "process_name": {
+                    "type": "keyword"
+                },
+                "event_type": {
+                    "type": "keyword"
+                },
+                "file_descriptor": {
+                    "type": "keyword"
+                },
+                "rule_tags": {
+                    "type": "keyword"
+                },
+                "severity": {
+                    "type": "keyword"
+                },
+                "tags": {
+                    "type": "keyword"
+                }
+            }
+        }
+    }
+}

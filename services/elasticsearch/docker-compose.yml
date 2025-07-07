@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: sysarmor-elasticsearch
+    hostname: ${ELASTICSEARCH_HOST}
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=${XPACK_SECURITY_ENABLED}
+      - "ES_JAVA_OPTS=-Xms${ELASTICSEARCH_HEAP_SIZE} -Xmx${ELASTICSEARCH_HEAP_SIZE}"
+      - cluster.name=${ELASTICSEARCH_CLUSTER_NAME}
+      - node.name=${ELASTICSEARCH_NODE_NAME}
+      - network.host=${ELASTICSEARCH_NETWORK_HOST}
+      - http.port=${ELASTICSEARCH_HTTP_PORT}
+      - transport.port=${ELASTICSEARCH_TRANSPORT_PORT}
+    ports:
+      - "${ELASTICSEARCH_HTTP_PORT}:${ELASTICSEARCH_HTTP_PORT}"
+      - "${ELASTICSEARCH_TRANSPORT_PORT}:${ELASTICSEARCH_TRANSPORT_PORT}"
+    volumes:
+      - elasticsearch_data:${ELASTICSEARCH_DATA_PATH}
+      - elasticsearch_logs:${ELASTICSEARCH_LOGS_PATH}
+      - ./config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - ./templates:/usr/share/elasticsearch/templates:ro
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${ELASTICSEARCH_HTTP_PORT}/_cluster/health || exit 1"]
+      interval: ${HEALTH_CHECK_INTERVAL}
+      timeout: ${HEALTH_CHECK_TIMEOUT}
+      retries: ${HEALTH_CHECK_RETRIES}
+      start_period: ${HEALTH_CHECK_START_PERIOD}
+
+  # Kibana
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: sysarmor-kibana
+    hostname: ${KIBANA_HOST}
+    ports:
+      - "${KIBANA_PORT}:${KIBANA_PORT}"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_HTTP_PORT}
+      - xpack.security.enabled=${XPACK_SECURITY_ENABLED}
+      - server.name=sysarmor-kibana
+      - server.host=${KIBANA_SERVER_HOST}
+      - server.port=${KIBANA_PORT}
+      - xpack.encryptedSavedObjects.encryptionKey=${KIBANA_ENCRYPTION_KEY}
+      - i18n.locale=${KIBANA_LOCALE}
+    volumes:
+      - kibana_data:${KIBANA_DATA_PATH}
+      - ./config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${KIBANA_PORT}/api/status || exit 1"]
+      interval: ${HEALTH_CHECK_INTERVAL}
+      timeout: ${HEALTH_CHECK_TIMEOUT}
+      retries: ${HEALTH_CHECK_RETRIES}
+      start_period: 120s
+
+volumes:
+  # Elasticsearch数据卷
+  elasticsearch_data:
+    driver: local
+  elasticsearch_logs:
+    driver: local
+  # Kibana数据卷
+  kibana_data:
+    driver: local
+
+# 使用默认网络，适合独立部署

@@ -1,0 +1,41 @@
+# Kibana配置文件
+# SysArmor EDR/XDR平台专用配置
+# 配置参数通过环境变量统一管理
+
+# 服务器配置
+server.name: sysarmor-kibana
+server.host: ${KIBANA_SERVER_HOST}
+server.port: ${KIBANA_PORT}
+
+# Elasticsearch配置
+elasticsearch.hosts: ["http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_HTTP_PORT}"]
+elasticsearch.requestTimeout: 30000
+elasticsearch.shardTimeout: 30000
+
+# 安全配置
+xpack.security.enabled: ${XPACK_SECURITY_ENABLED}
+xpack.encryptedSavedObjects.encryptionKey: "${KIBANA_ENCRYPTION_KEY}"
+
+# 监控配置
+monitoring.ui.container.elasticsearch.enabled: true
+
+# 日志配置
+logging.level: info
+logging.appenders.default:
+  type: console
+  layout:
+    type: json
+
+# 数据配置
+path.data: ${KIBANA_DATA_PATH}
+
+# UI配置
+server.basePath: ""
+server.rewriteBasePath: false
+
+# 性能配置
+elasticsearch.pingTimeout: 1500
+elasticsearch.requestHeadersWhitelist: ["authorization"]
+
+# 国际化配置
+i18n.locale: "${KIBANA_LOCALE}"

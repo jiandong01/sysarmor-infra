@@ -1,0 +1,20 @@
+{
+    "version": "8.11.0",
+    "objects": [
+        {
+            "id": "sysarmor-events-*",
+            "type": "index-pattern",
+            "updated_at": "2024-01-01T00:00:00.000Z",
+            "version": "WzEsMV0=",
+            "attributes": {
+                "title": "sysarmor-events-*",
+                "timeFieldName": "@timestamp",
+                "fields": "[{\"name\":\"@timestamp\",\"type\":\"date\",\"esTypes\":[\"date\"],\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"event_id\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"host_name\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"process_name\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"event_type\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"file_descriptor\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"rule_tags\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"severity\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true},{\"name\":\"tags\",\"type\":\"string\",\"esTypes\":[\"keyword\"],\"searchable\":true,\"aggregatable\":true,\"readFromDocValues\":true}]"
+            },
+            "references": [],
+            "migrationVersion": {
+                "index-pattern": "7.11.0"
+            }
+        }
+    ]
+}
