@@ -1,0 +1,69 @@
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: sysarmor-opensearch
+    environment:
+      - cluster.name=sysarmor-cluster
+      - node.name=sysarmor-node-1
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms2g -Xmx2g"
+      - "DISABLE_INSTALL_DEMO_CONFIG=true"
+      - "DISABLE_SECURITY_PLUGIN=false"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+      - ./config/opensearch.yml:/usr/share/opensearch/config/opensearch.yml:ro
+      - ./config/internal_users.yml:/usr/share/opensearch/config/opensearch-security/internal_users.yml:ro
+      - ./config/certs:/usr/share/opensearch/config/certs:ro
+    ports:
+      - "${OPENSEARCH_PORT:-9201}:9200"
+      - "9600:9600"
+    networks:
+      - sysarmor-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f -u admin:admin http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.11.0
+    container_name: sysarmor-dashboards
+    ports:
+      - "${DASHBOARDS_PORT:-5602}:5601"
+    expose:
+      - "5601"
+    environment:
+      - 'OPENSEARCH_HOSTS=["http://opensearch:9200"]'
+      - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=false"
+    volumes:
+      - ./config/opensearch_dashboards.yml:/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml:ro
+    networks:
+      - sysarmor-network
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  opensearch_data:
+    driver: local
+
+networks:
+  sysarmor-network:
+    driver: bridge

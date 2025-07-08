@@ -14,7 +14,7 @@ BACKUP_DIR ?= ./backups
 LOG_LEVEL ?= info
 
 # 服务列表
-SERVICES := nats clickhouse elasticsearch
+SERVICES := nats clickhouse elasticsearch opensearch
 AVAILABLE_SERVICES := $(SERVICES)
 
 # 默认目标
@@ -27,10 +27,12 @@ help:
 	@echo "  up-nats             - 启动NATS集群并自动设置JetStream"
 	@echo "  up-clickhouse       - 仅启动ClickHouse"
 	@echo "  up-elasticsearch    - 仅启动Elasticsearch和Kibana"
+	@echo "  up-opensearch       - 仅启动OpenSearch和Dashboards"
 	@echo "  down                - 停止所有服务"
 	@echo "  down-nats           - 仅停止NATS集群"
 	@echo "  down-clickhouse     - 仅停止ClickHouse"
 	@echo "  down-elasticsearch  - 仅停止Elasticsearch和Kibana"
+	@echo "  down-opensearch     - 仅停止OpenSearch和Dashboards"
 	@echo "  restart             - 重启所有服务"
 	@echo ""
 	@echo "📊 监控和状态:"
@@ -534,3 +536,101 @@ elasticsearch-test:
 	@echo ""
 	@echo "测试Kibana:"
 	@curl -s "http://$(EXTERNAL_HOST):$(KIBANA_PORT)/api/status" >/dev/null 2>&1 && echo "✅ Kibana连接成功 (端口: $(KIBANA_PORT))" || echo "❌ Kibana连接失败"
+
+# OpenSearch管理命令
+up-opensearch:
+	@echo "🚀 启动OpenSearch和Dashboards..."
+	@cd services/opensearch && docker compose up -d
+	@echo "⏳ 等待OpenSearch启动..."
+	@sleep 30
+	@make health-opensearch
+	@echo "📋 创建索引模板..."
+	@make opensearch-setup-template || { \
+		echo "⚠️  索引模板创建失败，可以稍后手动运行: make opensearch-setup-template"; \
+	}
+	@echo "📋 创建OpenSearch Dashboards索引模式..."
+	@make opensearch-setup-index-pattern || { \
+		echo "⚠️  索引模式创建失败，可以稍后手动运行: make opensearch-setup-index-pattern"; \
+	}
+	@echo "✅ OpenSearch和Dashboards启动完成!"
+	@echo "💡 现在可以访问 OpenSearch Dashboards: http://localhost:5602 (admin/admin)"
+
+down-opensearch:
+	@echo "🛑 停止OpenSearch和Dashboards..."
+	@cd services/opensearch && docker compose down
+
+health-opensearch:
+	@echo "🔍 检查OpenSearch健康状态..."
+	@if curl -s -u $(OPENSEARCH_USERNAME):$(OPENSEARCH_PASSWORD) "http://localhost:$(OPENSEARCH_PORT)/_cluster/health" >/dev/null 2>&1; then \
+		echo "✅ OpenSearch 正常 (端口: $(OPENSEARCH_PORT))"; \
+	else \
+		echo "❌ OpenSearch 异常 (端口: $(OPENSEARCH_PORT))"; \
+	fi
+	@if curl -s "http://localhost:$(OPENSEARCH_DASHBOARDS_PORT)/api/status" >/dev/null 2>&1; then \
+		echo "✅ OpenSearch Dashboards 正常 (端口: $(OPENSEARCH_DASHBOARDS_PORT))"; \
+	else \
+		echo "❌ OpenSearch Dashboards 异常 (端口: $(OPENSEARCH_DASHBOARDS_PORT))"; \
+	fi
+
+logs-opensearch:
+	@cd services/opensearch && docker compose logs --tail=100
+
+shell-opensearch:
+	@echo "🐚 进入OpenSearch容器..."
+	@docker exec -it sysarmor-opensearch /bin/bash
+
+shell-dashboards:
+	@echo "🐚 进入OpenSearch Dashboards容器..."
+	@docker exec -it sysarmor-dashboards /bin/bash
+
+opensearch-setup-template:
+	@echo "📋 创建OpenSearch索引模板..."
+	@curl -X PUT "http://localhost:$(OPENSEARCH_PORT)/_index_template/sysarmor-events" \
+		-u "$(OPENSEARCH_USERNAME):$(OPENSEARCH_PASSWORD)" \
+		-H "Content-Type: application/json" \
+		-d @services/opensearch/templates/sysarmor-events-template.json \
+		2>/dev/null && echo "✅ 索引模板创建成功" || echo "❌ 索引模板创建失败"
+
+opensearch-setup-index-pattern:
+	@echo "📋 创建OpenSearch Dashboards索引模式..."
+	@cd services/opensearch && \
+	chmod +x templates/create-index-pattern.sh && \
+	DASHBOARDS_PORT=$(OPENSEARCH_DASHBOARDS_PORT) INDEX_PATTERN=$(INDEX_PATTERN) OPENSEARCH_USERNAME=$(OPENSEARCH_USERNAME) OPENSEARCH_PASSWORD=$(OPENSEARCH_PASSWORD) ./templates/create-index-pattern.sh
+
+opensearch-info:
+	@echo "📊 OpenSearch集群信息:"
+	@echo "====================="
+	@curl -s -u admin:admin "http://localhost:9201/_cluster/health?pretty" 2>/dev/null || echo "❌ 无法连接到OpenSearch"
+	@echo ""
+	@echo "📋 索引信息:"
+	@curl -s -u admin:admin "http://localhost:9201/_cat/indices/sysarmor-events-*?v" 2>/dev/null || echo "❌ 无法获取索引信息"
+	@echo ""
+	@echo "👥 用户信息:"
+	@curl -s -u admin:admin "http://localhost:9201/_plugins/_security/api/internalusers?pretty" 2>/dev/null | grep -E '"admin"|"sysarmor_etl"|"sysarmor_reader"' || echo "❌ 无法获取用户信息"
+
+opensearch-test:
+	@echo "🧪 测试OpenSearch连接和功能..."
+	@echo "测试连接:"
+	@curl -s -u admin:admin "http://localhost:9201/" 2>/dev/null && echo "✅ OpenSearch连接成功 (端口: 9201)" || echo "❌ OpenSearch连接失败"
+	@echo ""
+	@echo "测试认证:"
+	@curl -s -u sysarmor_etl:sysarmor_etl "http://localhost:9201/_cluster/health" >/dev/null 2>&1 && echo "✅ ETL用户认证成功" || echo "❌ ETL用户认证失败"
+	@curl -s -u sysarmor_reader:sysarmor_reader "http://localhost:9201/_cluster/health" >/dev/null 2>&1 && echo "✅ Reader用户认证成功" || echo "❌ Reader用户认证失败"
+	@echo ""
+	@echo "测试索引模板:"
+	@curl -s -u admin:admin "http://localhost:9201/_index_template/sysarmor-events" >/dev/null 2>&1 && echo "✅ 索引模板存在" || echo "❌ 索引模板不存在"
+	@echo ""
+	@echo "测试Dashboards:"
+	@curl -s "http://localhost:5602/api/status" >/dev/null 2>&1 && echo "✅ Dashboards连接成功 (端口: 5602)" || echo "❌ Dashboards连接失败"
+
+opensearch-users:
+	@echo "👥 OpenSearch用户管理:"
+	@echo "===================="
+	@echo "内置用户账户:"
+	@echo "  admin/admin           - 管理员 (完全权限)"
+	@echo "  sysarmor_etl/sysarmor_etl     - ETL写入用户"
+	@echo "  sysarmor_reader/sysarmor_reader - 只读用户"
+	@echo "  kibanaserver/kibanaserver     - Dashboards服务用户"
+	@echo ""
+	@echo "测试用户权限:"
+	@curl -s -u admin:admin "http://localhost:9201/_plugins/_security/api/account?pretty" 2>/dev/null || echo "❌ 无法获取账户信息"

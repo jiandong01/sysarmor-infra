@@ -1,0 +1,51 @@
+---
+# OpenSearch 内部用户配置
+_meta:
+  type: "internalusers"
+  config_version: 2
+
+# 管理员用户 (密码: admin)
+admin:
+  hash: "$2a$12$VcCDgh2NDk07JGN0rjGbM.Ad41qVR/YFJcgHp0UGns5JDymv..TOG"
+  reserved: true
+  backend_roles:
+  - "admin"
+  description: "SysArmor admin user"
+
+# SysArmor ETL 用户 (密码: sysarmor_etl)
+sysarmor_etl:
+  hash: "$2a$12$4AcgAt3LmfOu6uK4EdqzQeBm1uuXDHDDx9B8xfHy7TPtBRVfnpZeS"
+  reserved: false
+  backend_roles:
+  - "sysarmor_writer"
+  description: "SysArmor ETL Writer User"
+  attributes:
+    department: "engineering"
+    role: "etl"
+
+# SysArmor 只读用户 (密码: sysarmor_reader)
+sysarmor_reader:
+  hash: "$2a$12$JJSXNfTowz7Uu5ttXfeYpeYE0arACvcwlPBStB1F.MI7f0U9Z4DGC"
+  reserved: false
+  backend_roles:
+  - "sysarmor_reader"
+  description: "SysArmor Read-only User"
+  attributes:
+    department: "security"
+    role: "analyst"
+
+# Kibana 服务用户 (密码: kibanaserver)
+kibanaserver:
+  hash: "$2a$12$u1ShR4l4uBS3Uv59Pa2y5.1uQuZBrUoqWEvQVb9OOdHLQgaHZFvUq"
+  reserved: true
+  backend_roles:
+  - "kibanaserver"
+  description: "OpenSearch Dashboards service user"
+
+# 日志收集用户 (密码: logstash)
+logstash:
+  hash: "$2a$12$u1ShR4l4uBS3Uv59Pa2y5.1uQuZBrUoqWEvQVb9OOdHLQgaHZFvUq"
+  reserved: false
+  backend_roles:
+  - "logstash"
+  description: "Logstash service user"
