@@ -30,14 +30,23 @@
                 "data_source": {
                     "type": "keyword"
                 },
+                "ingestion_timestamp": {
+                    "type": "date"
+                },
                 "pipeline": {
+                    "type": "keyword"
+                },
+                "pipeline_version": {
+                    "type": "keyword"
+                },
+                "nats_subject": {
                     "type": "keyword"
                 },
                 "event": {
                     "type": "object",
                     "properties": {
                         "evt.num": {
-                            "type": "long"
+                            "type": "keyword"
                         },
                         "evt.time": {
                             "type": "date",
@@ -111,83 +120,31 @@
                         }
                     }
                 },
-                "host_name": {
-                    "type": "keyword"
-                },
-                "process_name": {
-                    "type": "keyword"
-                },
-                "event_type": {
-                    "type": "keyword"
-                },
-                "file_descriptor": {
-                    "type": "keyword"
-                },
-                "rule_tags": {
-                    "type": "keyword"
-                },
-                "severity": {
-                    "type": "keyword"
+                "analysis": {
+                    "type": "object",
+                    "dynamic": true,
+                    "properties": {
+                        "rules": {
+                            "type": "object",
+                            "properties": {
+                                "matched": {
+                                    "type": "keyword"
+                                },
+                                "severity": {
+                                    "type": "keyword"
+                                },
+                                "score": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
                 },
                 "tags": {
-                    "type": "keyword"
-                },
-                "security": {
                     "type": "object",
+                    "dynamic": true,
                     "properties": {
-                        "matched_rules": {
-                            "type": "keyword"
-                        },
-                        "risk_score": {
-                            "type": "float"
-                        },
-                        "threat_category": {
-                            "type": "keyword"
-                        },
-                        "mitre_tactics": {
-                            "type": "keyword"
-                        },
-                        "mitre_techniques": {
-                            "type": "keyword"
-                        }
-                    }
-                },
-                "network": {
-                    "type": "object",
-                    "properties": {
-                        "src_ip": {
-                            "type": "ip"
-                        },
-                        "dst_ip": {
-                            "type": "ip"
-                        },
-                        "src_port": {
-                            "type": "integer"
-                        },
-                        "dst_port": {
-                            "type": "integer"
-                        },
-                        "protocol": {
-                            "type": "keyword"
-                        }
-                    }
-                },
-                "file": {
-                    "type": "object",
-                    "properties": {
-                        "path": {
-                            "type": "keyword"
-                        },
-                        "name": {
-                            "type": "keyword"
-                        },
-                        "extension": {
-                            "type": "keyword"
-                        },
-                        "size": {
-                            "type": "long"
-                        },
-                        "hash": {
+                        "rules": {
                             "type": "keyword"
                         }
                     }
