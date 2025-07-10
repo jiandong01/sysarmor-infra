@@ -284,9 +284,9 @@ nats stream restore SYSDIG_EVENTS ./backups/SYSDIG_EVENTS.tar.gz
 
 ### **Subject命名规范**
 ```
-events.sysdig.{agent_id}           # 特定agent事件
-events.sysdig.{agent_id}.{type}    # 特定类型事件
-events.osquery.{agent_id}          # OSQuery事件
+events.sysdig.{collector_id}           # 特定agent事件
+events.sysdig.{collector_id}.{type}    # 特定类型事件
+events.osquery.{collector_id}          # OSQuery事件
 events.system.{hostname}           # 系统事件
 ```
 
