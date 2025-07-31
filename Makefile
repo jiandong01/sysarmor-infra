@@ -14,7 +14,7 @@ BACKUP_DIR ?= ./backups
 LOG_LEVEL ?= info
 
 # 服务列表
-SERVICES := nats clickhouse elasticsearch opensearch
+SERVICES := nats kafka opensearch
 AVAILABLE_SERVICES := $(SERVICES)
 
 # 默认目标
@@ -25,14 +25,12 @@ help:
 	@echo "🚀 服务部署 (支持参数 SERVICES='service1 service2'):"
 	@echo "  up                  - 启动所有服务"
 	@echo "  up-nats             - 启动NATS集群并自动设置JetStream"
-	@echo "  up-clickhouse       - 仅启动ClickHouse"
-	@echo "  up-elasticsearch    - 仅启动Elasticsearch和Kibana"
-	@echo "  up-opensearch       - 仅启动OpenSearch和Dashboards"
+	@echo "  up-kafka            - 启动Kafka集群和管理界面"
+	@echo "  up-opensearch       - 启动OpenSearch和Dashboards"
 	@echo "  down                - 停止所有服务"
-	@echo "  down-nats           - 仅停止NATS集群"
-	@echo "  down-clickhouse     - 仅停止ClickHouse"
-	@echo "  down-elasticsearch  - 仅停止Elasticsearch和Kibana"
-	@echo "  down-opensearch     - 仅停止OpenSearch和Dashboards"
+	@echo "  down-nats           - 停止NATS集群"
+	@echo "  down-kafka          - 停止Kafka集群"
+	@echo "  down-opensearch     - 停止OpenSearch和Dashboards"
 	@echo "  restart             - 重启所有服务"
 	@echo ""
 	@echo "📊 监控和状态:"
@@ -41,8 +39,8 @@ help:
 	@echo "  logs                - 查看所有服务日志"
 	@echo "  logs-follow         - 实时跟踪日志"
 	@echo "  logs-nats           - 查看NATS日志"
-	@echo "  logs-clickhouse     - 查看ClickHouse日志"
-	@echo "  logs-elasticsearch  - 查看Elasticsearch日志"
+	@echo "  logs-kafka          - 查看Kafka日志"
+	@echo "  logs-opensearch     - 查看OpenSearch日志"
 	@echo ""
 	@echo "🔧 维护操作:"
 	@echo "  backup              - 备份所有数据"
@@ -218,7 +216,7 @@ status:
 	@docker ps --filter "name=sysarmor-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
 # 健康检查
-health: health-nats health-clickhouse health-elasticsearch
+health: health-nats health-kafka health-opensearch
 
 health-nats:
 	@echo "🔍 检查NATS集群健康状态..."
@@ -634,3 +632,97 @@ opensearch-users:
 	@echo ""
 	@echo "测试用户权限:"
 	@curl -s -u admin:admin "http://localhost:9201/_plugins/_security/api/account?pretty" 2>/dev/null || echo "❌ 无法获取账户信息"
+
+# Kafka管理命令
+up-kafka:
+	@echo "🚀 启动Kafka集群和管理界面..."
+	@cd services/kafka && docker compose up -d
+	@echo "⏳ 等待Kafka集群启动..."
+	@sleep 20
+	@make health-kafka
+	@echo "✅ Kafka集群启动完成!"
+	@echo "💡 现在可以访问 Kafka UI: http://localhost:8080"
+
+down-kafka:
+	@echo "🛑 停止Kafka集群..."
+	@cd services/kafka && docker compose down
+
+health-kafka:
+	@echo "🔍 检查Kafka集群健康状态..."
+	@if docker exec sysarmor-kafka kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1; then \
+		echo "✅ Kafka Broker 正常 (端口: 9092)"; \
+	else \
+		echo "❌ Kafka Broker 异常 (端口: 9092)"; \
+	fi
+	@if curl -s http://localhost:2181 >/dev/null 2>&1; then \
+		echo "✅ Zookeeper 正常 (端口: 2181)"; \
+	else \
+		echo "❌ Zookeeper 异常 (端口: 2181)"; \
+	fi
+	@if curl -s http://localhost:8080 >/dev/null 2>&1; then \
+		echo "✅ Kafka UI 正常 (端口: 8080)"; \
+	else \
+		echo "❌ Kafka UI 异常 (端口: 8080)"; \
+	fi
+
+logs-kafka:
+	@cd services/kafka && docker compose logs --tail=100
+
+shell-kafka:
+	@echo "🐚 进入Kafka容器..."
+	@docker exec -it sysarmor-kafka /bin/bash
+
+shell-zookeeper:
+	@echo "🐚 进入Zookeeper容器..."
+	@docker exec -it sysarmor-zookeeper /bin/bash
+
+kafka-topics:
+	@echo "📋 Kafka主题管理:"
+	@echo "================"
+	@echo "列出所有主题:"
+	@docker exec sysarmor-kafka kafka-topics --list --bootstrap-server localhost:9092 2>/dev/null || echo "❌ 无法连接到Kafka"
+
+kafka-create-topic:
+	@echo "📋 创建Kafka主题..."
+	@echo "主题名称: sysarmor-events"
+	@docker exec sysarmor-kafka kafka-topics --create \
+		--bootstrap-server localhost:9092 \
+		--topic sysarmor-events \
+		--partitions 3 \
+		--replication-factor 1 \
+		2>/dev/null && echo "✅ 主题创建成功" || echo "❌ 主题创建失败或已存在"
+
+kafka-info:
+	@echo "📊 Kafka集群信息:"
+	@echo "================"
+	@echo "集群元数据:"
+	@docker exec sysarmor-kafka kafka-broker-api-versions --bootstrap-server localhost:9092 2>/dev/null | head -5 || echo "❌ 无法连接到Kafka"
+	@echo ""
+	@echo "主题列表:"
+	@docker exec sysarmor-kafka kafka-topics --list --bootstrap-server localhost:9092 2>/dev/null || echo "❌ 无法获取主题列表"
+
+kafka-test:
+	@echo "🧪 测试Kafka连接和功能..."
+	@echo "测试Broker连接:"
+	@docker exec sysarmor-kafka kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1 && echo "✅ Kafka Broker连接成功" || echo "❌ Kafka Broker连接失败"
+	@echo ""
+	@echo "测试Zookeeper连接:"
+	@docker exec sysarmor-zookeeper bash -c "echo 'ruok' | nc localhost 2181" 2>/dev/null | grep -q "imok" && echo "✅ Zookeeper连接成功" || echo "❌ Zookeeper连接失败"
+	@echo ""
+	@echo "测试Kafka UI:"
+	@curl -s http://localhost:8080 >/dev/null 2>&1 && echo "✅ Kafka UI连接成功 (端口: 8080)" || echo "❌ Kafka UI连接失败"
+
+kafka-producer-test:
+	@echo "🧪 启动Kafka生产者测试..."
+	@echo "输入消息后按Enter发送，输入'exit'退出:"
+	@docker exec -it sysarmor-kafka kafka-console-producer \
+		--bootstrap-server localhost:9092 \
+		--topic sysarmor-events
+
+kafka-consumer-test:
+	@echo "🧪 启动Kafka消费者测试..."
+	@echo "监听 sysarmor-events 主题的消息 (Ctrl+C退出):"
+	@docker exec -it sysarmor-kafka kafka-console-consumer \
+		--bootstrap-server localhost:9092 \
+		--topic sysarmor-events \
+		--from-beginning

@@ -6,13 +6,11 @@ SysArmor EDR/XDR平台的完整基础设施服务，采用模块化设计，每�
 
 本项目提供SysArmor平台所需的所有基础服务：
 - 🚀 **NATS集群**: 3节点高可用消息队列，支持JetStream持久化
-- 🗄️ **ClickHouse**: 高性能时序数据库，用于事件数据存储和分析
-- 🔍 **OpenSearch**: 开源搜索和分析引擎，替代Elasticsearch，支持全文搜索和实时分析
-- 📊 **OpenSearch Dashboards**: 可视化分析平台，替代Kibana，提供丰富的数据可视化功能
-- 🐘 **PostgreSQL**: 关系型数据库，用于元数据和配置管理
-- 🔴 **Redis**: 内存缓存，用于会话和临时数据存储
+- 📨 **Kafka集群**: 高吞吐量分布式消息流处理平台，包含Zookeeper和管理界面
+- 🔍 **OpenSearch**: 开源搜索和分析引擎，支持全文搜索和实时分析
+- 📊 **OpenSearch Dashboards**: 可视化分析平台，提供丰富的数据可视化功能
 - 📊 **监控面板**: 内置服务监控和健康检查
-- 🛠️ **管理工具**: 完整的部署、维护和备份工具
+- ️ **管理工具**: 完整的部署、维护和备份工具
 
 ## 🎯 核心特性
 
@@ -55,34 +53,18 @@ sysarmor-infra/
     │       ├── nats-1.conf
     │       ├── nats-2.conf
     │       └── nats-3.conf
-    ├── clickhouse/                    # ClickHouse服务
-    │   ├── docker-compose.yml         # ClickHouse服务编排
-    │   ├── config/                    # 配置文件
-    │   │   ├── clickhouse-config.xml
-    │   │   └── users.xml
-    │   └── init/                      # 初始化脚本
-    │       └── 01-create-database.sql
-    ├── opensearch/                    # OpenSearch服务
-    │   ├── docker-compose.yml         # OpenSearch服务编排
-    │   ├── config/                    # 配置文件
-    │   │   ├── opensearch.yml
-    │   │   ├── opensearch_dashboards.yml
-    │   │   └── internal_users.yml
-    │   └── templates/                 # 索引模板
-    │       ├── sysarmor-events-template.json
-    │       └── create-index-pattern.sh
-    ├── elasticsearch/                 # Elasticsearch服务 (兼容性保留)
-    │   ├── docker-compose.yml         # Elasticsearch服务编排
-    │   ├── config/                    # 配置文件
-    │   └── templates/                 # 索引模板
-    ├── postgres/                      # PostgreSQL服务
-    │   ├── docker-compose.yml         # PostgreSQL服务编排
-    │   ├── config/                    # 配置文件
-    │   │   └── postgresql.conf
-    │   └── init/                      # 初始化脚本
-    │       └── 01-create-database.sql
-    └── redis/                         # Redis服务
-        └── docker-compose.yml         # Redis服务编排
+    ├── kafka/                         # Kafka集群服务
+    │   ├── docker-compose.yml         # Kafka服务编排
+    │   └── README.md                  # Kafka服务文档
+    └── opensearch/                    # OpenSearch服务
+        ├── docker-compose.yml         # OpenSearch服务编排
+        ├── config/                    # 配置文件
+        │   ├── opensearch.yml
+        │   ├── opensearch_dashboards.yml
+        │   └── internal_users.yml
+        └── templates/                 # 索引模板
+            ├── sysarmor-events-template.json
+            └── create-index-pattern.sh
 ```
 
 ## 快速开始
@@ -249,13 +231,11 @@ make logs-follow
 | **NATS集群** | 4222-4224 | 消息队列和事件流 | services/nats/ | JetStream |
 | **NATS监控** | 8222-8224 | 集群状态监控 | services/nats/ | - |
 | **NATS Surveyor** | 7777 | 集群可视化监控 | services/nats/ | - |
-| **ClickHouse** | 8123, 9000 | 事件数据存储和分析 | services/clickhouse/ | 本地存储 |
+| **Kafka Broker** | 9092, 9101 | 分布式消息流处理 | services/kafka/ | 本地存储 |
+| **Zookeeper** | 2181 | Kafka集群协调服务 | services/kafka/ | 本地存储 |
+| **Kafka UI** | 8080 | Kafka管理界面 | services/kafka/ | - |
 | **OpenSearch** | 9201, 9301 | 搜索和分析引擎 | services/opensearch/ | 本地存储 |
 | **OpenSearch Dashboards** | 5602 | 数据可视化平台 | services/opensearch/ | - |
-| **Elasticsearch** | 9200, 9300 | 搜索引擎 (兼容性) | services/elasticsearch/ | 本地存储 |
-| **Kibana** | 5601 | 数据可视化 (兼容性) | services/elasticsearch/ | - |
-| **PostgreSQL** | 5432 | 元数据和配置管理 | services/postgres/ | 本地存储 |
-| **Redis** | 6379 | 缓存和会话存储 | services/redis/ | AOF持久化 |
 
 ## 高级用法
 
@@ -321,22 +301,18 @@ ls -la backups/
 | **NATS集群** | nats://localhost:4222,4223,4224 | 无需认证 |
 | **NATS监控** | http://localhost:8222 (节点1) | 无需认证 |
 | **NATS Surveyor** | http://localhost:7777 | 无需认证 |
-| **ClickHouse** | http://localhost:8123 | sysarmor/sysarmor123 |
+| **Kafka Broker** | localhost:9092 | 无需认证 |
+| **Zookeeper** | localhost:2181 | 无需认证 |
+| **Kafka UI** | http://localhost:8080 | 无需认证 |
 | **OpenSearch** | http://localhost:9201 | admin/admin |
 | **OpenSearch Dashboards** | http://localhost:5602 | admin/admin |
-| **Elasticsearch** | http://localhost:9200 | elastic/elastic123 |
-| **Kibana** | http://localhost:5601 | elastic/elastic123 |
-| **PostgreSQL** | localhost:5432 | sysarmor/sysarmor123 |
-| **Redis** | localhost:6379 | 无需认证 |
 
 ### 数据库信息
 
-| 数据库 | 数据库名 | 用途 |
-|--------|----------|------|
-| **ClickHouse** | sysarmor_events | 事件数据存储 |
+| 数据库 | 数据库名/主题 | 用途 |
+|--------|-------------|------|
+| **Kafka** | sysarmor-events | 消息流处理主题 |
 | **OpenSearch** | sysarmor-events-* | 搜索和分析索引 |
-| **Elasticsearch** | sysarmor-events-* | 搜索索引 (兼容性) |
-| **PostgreSQL** | sysarmor_meta | 元数据管理 |
 
 ## 部署场景
 
@@ -527,9 +503,9 @@ resource "aws_instance" "sysarmor_infrastructure" {
 ## 版本信息
 
 - **NATS Server**: 2.10.7
-- **ClickHouse**: 23.8
-- **PostgreSQL**: 15
-- **Redis**: 7
+- **Kafka**: 7.4.0 (Confluent Platform)
+- **Zookeeper**: 7.4.0 (Confluent Platform)
+- **OpenSearch**: 2.11.0
 - **Docker Compose**: 3.8
 
 ## 许可证
